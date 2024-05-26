@@ -1,4 +1,6 @@
 #include <Arduino.h>
+#include <mutex>
+
 
 /*
  * AprilTag detection stream
@@ -88,6 +90,12 @@
  * Level 3: Debug messages that in a loop
  */
 #define DEBUG 2
+
+#include "detection_task.h"
+
+std::mutex        last_detection_mtx;
+AprilTagDetection last_detection[10];
+size_t            last_detection_count = 0;
 
 
 void task_apriltag_pose_estimate(void * pvParameters) {
@@ -350,58 +358,52 @@ void task_apriltag_pose_estimate(void * pvParameters) {
     Serial.println("done. Result:");
 #endif
 
-    // Print result
+    ///// --- export result --- //////
+
+    // Creating detection info object to feed into pose estimator
+    apriltag_detection_info_t info;
+    info.tagsize = TAG_SIZE;
+    info.fx = FX;
+    info.fy = FY;
+    info.cx = CX;
+    info.cy = CY;
+
+    last_detection_mtx.lock();
+    last_detection_count = zarray_size(detections);
+
     for (int i = 0; i < zarray_size(detections); i++) {
       // Get detection
       apriltag_detection_t *det;
       zarray_get(detections, i, &det);
-
-      // Print tag ID
-      Serial.print("ID: ");
-      Serial.println(det->id);
-      Serial.printf("");
-
-      // Creating detection info object to feed into pose estimator
-      apriltag_detection_info_t info;
-      info.det = det;
-      info.tagsize = TAG_SIZE;
-      info.fx = FX;
-      info.fy = FY;
-      info.cx = CX;
-      info.cy = CY;
+      last_detection[i].id = det->id;
 
       // Estimate the pose
       apriltag_pose_t pose;
+      info.det = det;
       double err = estimate_tag_pose(&info, &pose);
+
+      // Printout
+      Serial.print("ID: ");
+      Serial.println(det->id);
+      Serial.println("Rotation: ");
+        for(int i = 0; i < 3; i++) {
+            for(int j = 0; j < 3; j++) {
+                Serial.printf("%7.4f ", pose.R->data[i*3+j]);
+            }
+            Serial.printf("\n");
+        }
+      Serial.print("Translation: ");
+      Serial.printf("%7.4f / ", pose.t->data[0]);
+      Serial.printf("%7.4f / ", pose.t->data[1]);
+      Serial.printf("%7.4f \n", pose.t->data[2]);
+      Serial.flush();
       
-      // Print result (position of the tag in the camera's coordinate system)
-      //matd_print(pose.R, "%15f"); // Rotation matrix
-      //matd_print(pose.t, "%15f"); // Translation matrix
-
-      // Compute the yaw, pitch, and roll from the rotation matrix (and convert to degree)
-      double yaw = atan2(MATD_EL(pose.R, 1, 0), MATD_EL(pose.R, 0, 0)) * RAD_TO_DEG;
-      double pitch = atan2(-MATD_EL(pose.R, 2, 0), sqrt(pow(MATD_EL(pose.R, 2, 1), 2) + pow(MATD_EL(pose.R, 2, 2), 2))) * RAD_TO_DEG;
-      double roll = atan2(MATD_EL(pose.R, 2, 1), MATD_EL(pose.R, 2, 2)) * RAD_TO_DEG;
-
-      // Print the yaw, pitch, and roll of the camera
-      printf("y,p,r: %15f, %15f, %15f\n", yaw, pitch, roll);
-      
-      // Compute the transpose of the rotation matrix
-      matd_t *R_transpose = matd_transpose(pose.R);
-
-      // Negate the translation vector
-      for (int i = 0; i < pose.t->nrows; i++) {
-          MATD_EL(pose.t, i, 0) = -MATD_EL(pose.t, i, 0);
-      }
-
-      // Compute the position of the camera in the tag's coordinate system
-      matd_t *camera_position = matd_multiply(R_transpose, pose.t);
-      printf("x,y,z: %15f, %15f, %15f\n", MATD_EL(camera_position, 0, 0), MATD_EL(camera_position, 1, 0), MATD_EL(camera_position, 2, 0));
-
-      // Free the matrices
-      matd_destroy(R_transpose);
-      matd_destroy(camera_position);
+      // Write to last_detection
+      memcpy(&last_detection[i].rot, pose.R->data,sizeof(float)*9);
+      memcpy(&last_detection[i].t,   pose.t->data,sizeof(float)*3);
     }
+    last_detection_mtx.unlock();
+    Serial.print("Run completed.  ");
 
     // Cleaning up
 #if DEBUG >= 3
@@ -421,7 +423,7 @@ void task_apriltag_pose_estimate(void * pvParameters) {
 #ifdef CAP_TO_SD
     Serial.printf("t, id: %12.3f, %zu\n", t, frame_id - 1);
 #else
-    Serial.printf("t: %12.3f\n", t);
+    Serial.printf("t: %12.3f\n\n", t);
 #endif
   }
 }
