@@ -98,6 +98,17 @@ AprilTagDetection last_detection[10];
 size_t            last_detection_count = 0;
 
 
+int get_last_detections(AprilTagDetection* last_detection_out) {
+    last_detection_mtx.lock();
+    for(int i=0; i<last_detection_count; ++i) {
+        last_detection_out[i] = last_detection[i];
+    }
+    int last_detection_count2 = last_detection_count; // copy because of mutex unlock
+    last_detection_mtx.unlock();
+    return last_detection_count2;
+}
+
+
 void task_apriltag_pose_estimate(void * pvParameters) {
   // Show some signs of life
 #if DEBUG >= 1

@@ -7,6 +7,8 @@ struct AprilTagDetection {
     float t[3];
 };
 
+int get_last_detections(AprilTagDetection* last_detection_out);
+
 void task_apriltag_pose_estimate(void * pvParameters);
 
 #endif // DETECTION_TASK_H
