@@ -1,9 +1,11 @@
 #include "esp_http_server.h"
+#include <WebSocketsServer.h>
 
 #include "server_task.h"
 #include "detection_task.h"
 
 httpd_handle_t apriltag_httpd = NULL;
+WebSocketsServer websocket_server(11399);
 
 static esp_err_t apriltag_handler(httpd_req_t *req)
 {
@@ -11,7 +13,7 @@ static esp_err_t apriltag_handler(httpd_req_t *req)
 
     char buffer[500];
     char* buffer_ptr = buffer;
-    buffer_ptr = sprint_last_detections(buffer_ptr);
+    buffer_ptr = Apriltag::sprint_last_detections(buffer_ptr);
 
     httpd_resp_set_type(req, HTTPD_TYPE_JSON);
     res = httpd_resp_send(req, buffer, buffer_ptr-buffer);
@@ -38,4 +40,61 @@ void setup_http_handlers() {
     {
         httpd_register_uri_handler(apriltag_httpd, &apriltag_uri);
     }
+}
+
+// Callback: receiving any WebSocket message
+void onWebSocketEvent(uint8_t client_num, WStype_t type, uint8_t *payload, size_t length)
+{
+    // Figure out the type of WebSocket event
+    switch (type)
+    {
+
+        // Client has disconnected
+        case WStype_DISCONNECTED:
+        {
+            Serial.printf("[%u] Disconnected!\n", client_num);
+            break;
+        }
+        // New client has connected
+        case WStype_CONNECTED:
+        {
+            IPAddress ip = websocket_server.remoteIP(client_num);
+            Serial.printf("[%u] Connection from ", client_num);
+            Serial.println(ip.toString());
+            break;
+        }
+        // Handle text messages from client
+        case WStype_TEXT:
+        {
+            // Print out raw message
+            Serial.printf("[%u] Received text: %s\n", client_num, payload);
+            break;
+        }
+        // For everything else: do nothing
+        case WStype_BIN:
+        case WStype_ERROR:
+        case WStype_FRAGMENT_TEXT_START:
+        case WStype_FRAGMENT_BIN_START:
+        case WStype_FRAGMENT:
+        case WStype_FRAGMENT_FIN:
+        default:
+            break;
+    }
+}
+
+void broadcast_on_new_data(){
+    char buffer[500];
+    char* buffer_ptr = Apriltag::sprint_last_detections(buffer);
+    websocket_server.broadcastTXT(buffer, buffer_ptr - buffer);
+    Serial.printf("Broadcast data to clients");
+}
+
+void setup_websocketserver() {
+    websocket_server.begin();
+    websocket_server.onEvent(onWebSocketEvent);
+    Apriltag::add_subscriber(broadcast_on_new_data);
+}
+
+void loop_websocketserver() {
+    websocket_server.loop();
 }
