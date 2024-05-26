@@ -98,6 +98,33 @@ AprilTagDetection last_detection[10];
 size_t            last_detection_count = 0;
 
 
+char* sprint_last_detections(char* buffer_ptr){
+    int n;
+    n = sprintf(buffer_ptr,"[");
+    buffer_ptr += n;
+    last_detection_mtx.lock();
+    for(int i=0; i<last_detection_count; ++i) {
+        if(i>0){
+            n = sprintf(buffer_ptr,",\n");
+            buffer_ptr += n;
+        }
+        n = sprintf(buffer_ptr,"{\"id\": %d,"
+                "\"rot\": [%9.6f,%9.6f,%9.6f,%9.6f,%9.6f,%9.6f,%9.6f,%9.6f,%9.6f], "
+                "\"t\": [%9.6f,%9.6f,%9.6f]}",
+                last_detection[i].id,
+                last_detection[i].rot[0], last_detection[i].rot[1], last_detection[i].rot[2], 
+                last_detection[i].rot[3], last_detection[i].rot[4], last_detection[i].rot[5], 
+                last_detection[i].rot[6], last_detection[i].rot[7], last_detection[i].rot[8],
+                last_detection[i].t[0],   last_detection[i].t[1],   last_detection[i].t[2]
+            );
+        buffer_ptr += n;
+    }
+    last_detection_mtx.unlock();
+    n = sprintf(buffer_ptr,"]");
+    buffer_ptr += n;
+    return buffer_ptr;
+}
+
 int get_last_detections(AprilTagDetection* last_detection_out) {
     last_detection_mtx.lock();
     for(int i=0; i<last_detection_count; ++i) {
