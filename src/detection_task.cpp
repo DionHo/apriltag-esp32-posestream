@@ -93,7 +93,7 @@
 
 #include "detection_task.h"
 
-namespace Apriltag{
+namespace apriltag {
 
     std::mutex          last_detection_mtx;
     Detection           last_detection[10];

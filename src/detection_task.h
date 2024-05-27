@@ -1,7 +1,7 @@
 #ifndef DETECTION_TASK_H
 #define DETECTION_TASK_H
 
-namespace Apriltag {
+namespace apriltag {
 
     struct Detection {
         int id;

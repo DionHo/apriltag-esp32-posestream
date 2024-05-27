@@ -31,7 +31,7 @@ void setup() {
 #endif
 
     xTaskCreatePinnedToCore(
-                    Apriltag::task_apriltag_pose_estimate,   /* Task function. */
+                    apriltag::task_apriltag_pose_estimate,   /* Task function. */
                     "ApprilTag",     /* name of task. */
                     100000,       /* Stack size of task */
                     NULL,        /* parameter of the task */
@@ -40,11 +40,13 @@ void setup() {
                     0);          /* pin task to core 1 */
     delay(500);
 
-    setup_websocketserver();
+    setup_tcp_server();
+    // setup_websocketserver();
     setup_http_handlers();
 }
 
 void loop() {
-    loop_websocketserver();
-    delay(5);
+    loop_tcp_server();
+    // loop_websocketserver();
+    delay(10);
 }
