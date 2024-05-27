@@ -1,0 +1,39 @@
+[gd_scene load_steps=5 format=2]
+
+[ext_resource path="res://scenes/Main.gd" type="Script" id=1]
+
+[sub_resource type="SpatialMaterial" id=2]
+albedo_color = Color( 0.278431, 0.356863, 0.729412, 1 )
+
+[sub_resource type="CubeMesh" id=1]
+material = SubResource( 2 )
+size = Vector3( 0.1, 0.1, 0.01 )
+
+[sub_resource type="SphereMesh" id=3]
+radius = 0.01
+height = 0.02
+radial_segments = 24
+rings = 12
+
+[node name="Main" type="Spatial"]
+script = ExtResource( 1 )
+tcp_address = "192.168.2.225"
+
+[node name="RichTextLabel" type="RichTextLabel" parent="."]
+margin_right = 277.0
+margin_bottom = 584.0
+scroll_following = true
+
+[node name="Camera" type="Camera" parent="."]
+transform = Transform( -1, 0, -8.74228e-08, 0, 1, 0, 8.74228e-08, 0, -1, 0, 0, 0 )
+
+[node name="AprilTag" type="MeshInstance" parent="."]
+transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.5 )
+mesh = SubResource( 1 )
+
+[node name="Dot" type="MeshInstance" parent="AprilTag"]
+transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.0619733, 0 )
+mesh = SubResource( 3 )
+
+[node name="OmniLight" type="OmniLight" parent="."]
+transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0 )
